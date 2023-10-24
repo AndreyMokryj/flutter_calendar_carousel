@@ -244,8 +244,7 @@ enum WeekdayFormat {
   standaloneNarrow,
 }
 
-class _CalendarState<T extends EventInterface>
-    extends State<CalendarCarousel<T>> {
+class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>> {
   late PageController _controller;
   late List<DateTime> _dates;
   late List<List<DateTime>> _weeks;
@@ -271,8 +270,7 @@ class _CalendarState<T extends EventInterface>
 
     minDate = widget.minSelectedDate ?? DateTime(2018);
     maxDate = widget.maxSelectedDate ??
-        DateTime(
-            DateTime.now().year + 1, DateTime.now().month, DateTime.now().day);
+        DateTime(DateTime.now().year + 1, DateTime.now().month, DateTime.now().day);
 
     final selectedDateTime = widget.selectedDateTime;
     if (selectedDateTime != null) _selectedDate = selectedDateTime;
@@ -289,8 +287,7 @@ class _CalendarState<T extends EventInterface>
     );
 
     _localeDate = DateFormat.yMMM(widget.locale);
-    firstDayOfWeek = widget.firstDayOfWeek ??
-        (_localeDate.dateSymbols.FIRSTDAYOFWEEK + 1) % 7;
+    firstDayOfWeek = widget.firstDayOfWeek ?? (_localeDate.dateSymbols.FIRSTDAYOFWEEK + 1) % 7;
 
     _setDate();
   }
@@ -327,9 +324,7 @@ class _CalendarState<T extends EventInterface>
     if (widget.weekFormat) {
       _pageNum = _targetDate.difference(_firstDayOfWeek(minDate)).inDays ~/ 7;
     } else {
-      _pageNum = (_targetDate.year - minDate.year) * 12 +
-          _targetDate.month -
-          minDate.month;
+      _pageNum = (_targetDate.year - minDate.year) * 12 + _targetDate.month - minDate.month;
     }
   }
 
@@ -395,11 +390,9 @@ class _CalendarState<T extends EventInterface>
           ),
           Expanded(
               child: PageView.builder(
-            itemCount:
-                widget.weekFormat ? this._weeks.length : this._dates.length,
-            physics: widget.isScrollable
-                ? widget.pageScrollPhysics
-                : NeverScrollableScrollPhysics(),
+            itemCount: widget.weekFormat ? this._weeks.length : this._dates.length,
+            physics:
+                widget.isScrollable ? widget.pageScrollPhysics : NeverScrollableScrollPhysics(),
             scrollDirection: widget.scrollDirection,
             onPageChanged: (index) {
               this._setDate(pageNum: index, shouldJumpToPage: false);
@@ -433,30 +426,13 @@ class _CalendarState<T extends EventInterface>
         mainAxisAlignment: widget.dayMainAxisAlignment,
         children: <Widget>[
           DefaultTextStyle(
-            style: getDefaultDayStyle(
-                isSelectable,
-                index,
-                isSelectedDay,
-                isToday,
-                isPrevMonthDay,
-                textStyle,
-                defaultTextStyle,
-                isNextMonthDay,
-                isThisMonthDay),
+            style: getDefaultDayStyle(isSelectable, index, isSelectedDay, isToday, isPrevMonthDay,
+                textStyle, defaultTextStyle, isNextMonthDay, isThisMonthDay),
             child: Text(
               '${now.day}',
               semanticsLabel: now.day.toString(),
-              style: getDayStyle(
-                  isSelectable,
-                  index,
-                  isSelectedDay,
-                  isToday,
-                  isPrevMonthDay,
-                  textStyle,
-                  defaultTextStyle,
-                  isNextMonthDay,
-                  isThisMonthDay,
-                  now),
+              style: getDayStyle(isSelectable, index, isSelectedDay, isToday, isPrevMonthDay,
+                  textStyle, defaultTextStyle, isNextMonthDay, isThisMonthDay, now),
               maxLines: 1,
             ),
           ),
@@ -585,9 +561,7 @@ class _CalendarState<T extends EventInterface>
       _startWeekday = 0;
     }
     _endWeekday =
-        DateTime(_dates[slideIndex].year, _dates[slideIndex].month + 1, 1)
-                .weekday -
-            firstDayOfWeek;
+        DateTime(_dates[slideIndex].year, _dates[slideIndex].month + 1, 1).weekday - firstDayOfWeek;
     double screenWidth = MediaQuery.of(context).size.width;
     int totalItemCount = widget.staticSixWeekFormat
         ? 42
@@ -635,17 +609,15 @@ class _CalendarState<T extends EventInterface>
                     /// last day of month + weekday
                     (index) {
                   final selectedDateTime = widget.selectedDateTime;
-                  bool isToday =
-                      DateTime.now().day == index + 1 - _startWeekday &&
-                          DateTime.now().month == month &&
-                          DateTime.now().year == year;
+                  bool isToday = DateTime.now().day == index + 1 - _startWeekday &&
+                      DateTime.now().month == month &&
+                      DateTime.now().year == year;
                   bool isSelectedDay = selectedDateTime != null &&
                       selectedDateTime.year == year &&
                       selectedDateTime.month == month &&
                       selectedDateTime.day == index + 1 - _startWeekday;
                   bool isPrevMonthDay = index < _startWeekday;
-                  bool isNextMonthDay = index >=
-                      (DateTime(year, month + 1, 0).day) + _startWeekday;
+                  bool isNextMonthDay = index >= (DateTime(year, month + 1, 0).day) + _startWeekday;
                   bool isThisMonthDay = !isPrevMonthDay && !isNextMonthDay;
 
                   DateTime now = DateTime(year, month, 1);
@@ -713,9 +685,7 @@ class _CalendarState<T extends EventInterface>
     double screenWidth = MediaQuery.of(context).size.width;
     List<DateTime> weekDays = _weeks[slideIndex];
 
-    weekDays = weekDays
-        .map((weekDay) => weekDay.add(Duration(days: firstDayOfWeek)))
-        .toList();
+    weekDays = weekDays.map((weekDay) => weekDay.add(Duration(days: firstDayOfWeek))).toList();
 
     return AnimatedBuilder(
         animation: _controller,
@@ -748,18 +718,15 @@ class _CalendarState<T extends EventInterface>
                     bool isToday = weekDays[index].day == DateTime.now().day &&
                         weekDays[index].month == DateTime.now().month &&
                         weekDays[index].year == DateTime.now().year;
-                    bool isSelectedDay =
-                        this._selectedDate.year == weekDays[index].year &&
-                            this._selectedDate.month == weekDays[index].month &&
-                            this._selectedDate.day == weekDays[index].day;
-                    bool isPrevMonthDay =
-                        weekDays[index].month < this._targetDate.month;
-                    bool isNextMonthDay =
-                        weekDays[index].month > this._targetDate.month;
+                    bool isSelectedDay = this._selectedDate.year == weekDays[index].year &&
+                        this._selectedDate.month == weekDays[index].month &&
+                        this._selectedDate.day == weekDays[index].day;
+                    bool isPrevMonthDay = weekDays[index].month < this._targetDate.month;
+                    bool isNextMonthDay = weekDays[index].month > this._targetDate.month;
                     bool isThisMonthDay = !isPrevMonthDay && !isNextMonthDay;
 
-                    DateTime now = DateTime(weekDays[index].year,
-                        weekDays[index].month, weekDays[index].day);
+                    DateTime now =
+                        DateTime(weekDays[index].year, weekDays[index].month, weekDays[index].day);
                     TextStyle? textStyle;
                     TextStyle defaultTextStyle;
                     if (isPrevMonthDay && !widget.showOnlyCurrentMonthDate) {
@@ -836,8 +803,7 @@ class _CalendarState<T extends EventInterface>
   Iterable<DateTime> _daysInRange(DateTime start, DateTime end) {
     var offset = start.timeZoneOffset;
 
-    return List<int>.generate(end.difference(start).inDays, (i) => i + 1)
-        .map((int i) {
+    return List<int>.generate(end.difference(start).inDays, (i) => i + 1).map((int i) {
       var d = start.add(Duration(days: i - 1));
 
       var timeZoneDiff = d.timeZoneOffset - offset;
@@ -860,8 +826,7 @@ class _CalendarState<T extends EventInterface>
     setState(() {
       _selectedDate = picked;
     });
-    widget.onDayPressed
-        ?.call(picked, widget.markedDatesMap?.getEvents(picked) ?? const []);
+    widget.onDayPressed?.call(picked, widget.markedDatesMap?.getEvents(picked) ?? const []);
   }
 
   Future<void> _selectDateFromPicker() async {
@@ -877,8 +842,7 @@ class _CalendarState<T extends EventInterface>
       setState(() {
         _selectedDate = selected;
       });
-      widget.onDayPressed?.call(
-          selected, widget.markedDatesMap?.getEvents(selected) ?? const []);
+      widget.onDayPressed?.call(selected, widget.markedDatesMap?.getEvents(selected) ?? const []);
     }
   }
 
@@ -921,10 +885,9 @@ class _CalendarState<T extends EventInterface>
     if (/*widget.showOnlyCurrentMonthDate && */ _startWeekday == 7) {
       _startWeekday = 0;
     }
-    _endWeekday = DateTime(date[currentDateIndex].year,
-                date[currentDateIndex].month + 1, 1)
-            .weekday -
-        firstDayOfWeek;
+    _endWeekday =
+        DateTime(date[currentDateIndex].year, date[currentDateIndex].month + 1, 1).weekday -
+            firstDayOfWeek;
     this._dates = date;
     this._weeks = week;
 //        this._selectedDate = widget.selectedDateTime != null
@@ -1010,8 +973,7 @@ class _CalendarState<T extends EventInterface>
     final markedDateShowIcon = widget.markedDateShowIcon;
     final markedDateIconMaxShown = widget.markedDateIconMaxShown;
     final markedDateIconOffset = widget.markedDateIconOffset;
-    final markedDateMoreCustomDecoration =
-        widget.markedDateMoreCustomDecoration;
+    final markedDateMoreCustomDecoration = widget.markedDateMoreCustomDecoration;
 
     if (markedEvents.isNotEmpty) {
       List<Widget> tmp = [];
@@ -1024,8 +986,7 @@ class _CalendarState<T extends EventInterface>
           if (tmp.isNotEmpty && tmp.length < markedDateIconMaxShown) {
             offset += markedDateIconOffset;
           }
-          if (tmp.length < markedDateIconMaxShown &&
-              markedDateIconBuilder != null) {
+          if (tmp.length < markedDateIconMaxShown && markedDateIconBuilder != null) {
             tmp.add(Center(
                 child: Container(
               padding: EdgeInsets.only(
@@ -1118,8 +1079,7 @@ class _CalendarState<T extends EventInterface>
   ) {
     return !isSelectable
         ? defaultInactiveDaysTextStyle
-        : (_localeDate.dateSymbols.WEEKENDRANGE
-                    .contains((index - 1 + firstDayOfWeek) % 7)) &&
+        : (_localeDate.dateSymbols.WEEKENDRANGE.contains((index - 1 + firstDayOfWeek) % 7)) &&
                 !isSelectedDay &&
                 !isToday
             ? (isPrevMonthDay
@@ -1149,21 +1109,17 @@ class _CalendarState<T extends EventInterface>
       DateTime now) {
     // If day is in multiple selection get its style(if available)
     bool isMultipleMarked = widget.multipleMarkedDates?.isMarked(now) ?? false;
-    TextStyle? mutipleMarkedTextStyle =
-        widget.multipleMarkedDates?.getTextStyle(now);
+    TextStyle? mutipleMarkedTextStyle = widget.multipleMarkedDates?.getTextStyle(now);
 
     return isSelectedDay && widget.selectedDayTextStyle != null
         ? widget.selectedDayTextStyle
         : isMultipleMarked
             ? mutipleMarkedTextStyle
-            : (_localeDate.dateSymbols.WEEKENDRANGE
-                        .contains((index - 1 + firstDayOfWeek) % 7)) &&
+            : (_localeDate.dateSymbols.WEEKENDRANGE.contains((index - 1 + firstDayOfWeek) % 7)) &&
                     !isSelectedDay &&
                     isThisMonthDay &&
                     !isToday
-                ? (isSelectable
-                    ? widget.weekendTextStyle
-                    : widget.inactiveWeekendTextStyle)
+                ? (isSelectable ? widget.weekendTextStyle : widget.inactiveWeekendTextStyle)
                 : !isSelectable
                     ? widget.inactiveDaysTextStyle
                     : isPrevMonthDay
@@ -1207,16 +1163,8 @@ class _CalendarState<T extends EventInterface>
 
       final styleForBuilder = appTextStyle.merge(dayStyle);
 
-      dayContainer = customDayBuilder(
-          isSelectable,
-          index,
-          isSelectedDay,
-          isToday,
-          isPrevMonthDay,
-          styleForBuilder,
-          isNextMonthDay,
-          isThisMonthDay,
-          now);
+      dayContainer = customDayBuilder(isSelectable, index, isSelectedDay, isToday, isPrevMonthDay,
+          styleForBuilder, isNextMonthDay, isThisMonthDay, now);
     }
 
     return dayContainer ??

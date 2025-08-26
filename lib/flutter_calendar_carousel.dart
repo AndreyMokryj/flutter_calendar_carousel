@@ -143,6 +143,7 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
   final bool showIconBehindDayText;
   final ScrollPhysics pageScrollPhysics;
   final bool shouldShowTransform;
+  final bool goingToToday;
 
   ///Maximium number of dots to be shown
   final int maxDot;
@@ -228,6 +229,7 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
       this.showIconBehindDayText = false,
       this.pageScrollPhysics = const ScrollPhysics(),
       this.shouldShowTransform = true,
+      this.goingToToday = false,
       this.maxDot = 5})
       : super(key: key);
 
@@ -901,6 +903,18 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
         _setDatesAndWeeks();
       });
     } else {
+      final now = DateTime.now();
+      bool ignore = widget.goingToToday;
+      if (widget.weekFormat) {
+        int dayDiff = now.difference(this._weeks[page].first).inDays;
+        ignore = ignore && (dayDiff > 7 || dayDiff < -7);
+      } else {
+        ignore =
+            ignore && (now.year != this._dates[page].year || now.month != this._dates[page].month);
+      }
+      if (ignore) {
+        return;
+      }
       if (widget.weekFormat) {
         setState(() {
           this._pageNum = pageNum;

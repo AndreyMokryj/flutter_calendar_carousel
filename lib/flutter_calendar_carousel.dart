@@ -144,6 +144,7 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
   final ScrollPhysics pageScrollPhysics;
   final bool shouldShowTransform;
   final bool goingToToday;
+  final Duration animationDuration;
 
   ///Maximium number of dots to be shown
   final int maxDot;
@@ -229,8 +230,10 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
       this.showIconBehindDayText = false,
       this.pageScrollPhysics = const ScrollPhysics(),
       this.shouldShowTransform = true,
+      this.maxDot = 5,
       this.goingToToday = false,
-      this.maxDot = 5})
+      this.animationDuration = const Duration(seconds: 1),
+      })
       : super(key: key);
 
   @override
@@ -922,11 +925,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
         });
 
         if (shouldJumpToPage) {
-          _controller.animateToPage(
-            pageNum,
-            duration: const Duration(milliseconds: 1),
-            curve: const Threshold(0),
-          );
+          _controller.animateToPage(pageNum, duration: widget.animationDuration, curve: Curves.easeOut);
         }
       } else {
         setState(() {
@@ -938,11 +937,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
         });
 
         if (shouldJumpToPage) {
-          _controller.animateToPage(
-            pageNum,
-            duration: const Duration(milliseconds: 1),
-            curve: const Threshold(0),
-          );
+          _controller.animateToPage(pageNum, duration: widget.animationDuration, curve: Curves.easeOut);
         }
       }
 

@@ -5,18 +5,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_calendar_carousel/classes/event.dart';
 import 'package:flutter_calendar_carousel/classes/event_list.dart';
+import 'package:flutter_calendar_carousel/classes/multiple_marked_dates.dart';
 import 'package:flutter_calendar_carousel/src/calendar_header.dart';
 import 'package:flutter_calendar_carousel/src/default_styles.dart';
 import 'package:flutter_calendar_carousel/src/weekday_row.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
-import 'classes/multiple_marked_dates.dart';
-
 export 'package:flutter_calendar_carousel/classes/event_list.dart';
 
 typedef MarkedDateIconBuilder<T> = Widget? Function(T event);
-typedef void OnDayLongPressed(DateTime day);
+typedef OnDayPressed<T> = void Function(DateTime, List<T>);
+typedef OnDayLongPressed = void Function(DateTime day);
+typedef OnCalendarChanged = void Function(DateTime);
 
 /// This builder is called for every day in the calendar.
 /// If you want to build only few custom day containers, return null for the days you want to leave with default looks
@@ -35,7 +36,7 @@ typedef void OnDayLongPressed(DateTime day);
 /// [isNextMonthDay] - if the day is from next month
 /// [isThisMonthDay] - if the day is from next month
 /// [day] - day being built.
-typedef Widget? DayBuilder(
+typedef DayBuilder = Widget? Function(
     bool isSelectable,
     int index,
     bool isSelectedDay,
@@ -49,7 +50,7 @@ typedef Widget? DayBuilder(
 /// This builder is called for every weekday container (7 times, from Mon to Sun).
 /// [weekday] - weekday built, from 0 to 6.
 /// [weekdayName] - string representation of the weekday (Mon, Tue, Wed, etc).
-typedef Widget WeekdayBuilder(int weekday, String weekdayName);
+typedef WeekdayBuilder = Widget Function(int weekday, String weekdayName);
 
 class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
   final double viewportFraction;
@@ -72,8 +73,9 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
   final Color selectedDayButtonColor;
   final Color selectedDayBorderColor;
   final bool? daysHaveCircularBorder;
+  final BorderRadiusGeometry? daysBorderRadius;
   final bool disableDayPressed;
-  final Function(DateTime, List<T>)? onDayPressed;
+  final OnDayPressed<T>? onDayPressed;
   final TextStyle? weekdayTextStyle;
   final Color iconColor;
   final TextStyle? headerTextStyle;
@@ -118,7 +120,7 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
   final Widget? leftButtonIcon;
   final Widget? rightButtonIcon;
   final ScrollPhysics? customGridViewPhysics;
-  final Function(DateTime)? onCalendarChanged;
+  final OnCalendarChanged? onCalendarChanged;
   final String locale;
   final int? firstDayOfWeek;
   final DateTime? minSelectedDate;
@@ -126,9 +128,9 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
   final TextStyle? inactiveDaysTextStyle;
   final TextStyle? inactiveWeekendTextStyle;
   final bool headerTitleTouchable;
-  final Function? onHeaderTitlePressed;
-  final Function? onLeftArrowPressed;
-  final Function? onRightArrowPressed;
+  final VoidCallback? onHeaderTitlePressed;
+  final VoidCallback? onLeftArrowPressed;
+  final VoidCallback? onRightArrowPressed;
   final WeekdayFormat weekDayFormat;
   final bool staticSixWeekFormat;
   final bool isScrollable;
@@ -141,17 +143,22 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
   final bool showIconBehindDayText;
   final ScrollPhysics pageScrollPhysics;
   final bool shouldShowTransform;
+  final bool goingToToday;
+  final Duration animationDuration;
 
-  CalendarCarousel({
+  ///Maximium number of dots to be shown
+  final int maxDot;
+
+  const CalendarCarousel({
     Key? key,
-    this.viewportFraction = 1.0,
+    this.viewportFraction = 1,
     this.prevDaysTextStyle,
     this.daysTextStyle,
     this.nextDaysTextStyle,
     this.prevMonthDayBorderColor = Colors.transparent,
     this.thisMonthDayBorderColor = Colors.transparent,
     this.nextMonthDayBorderColor = Colors.transparent,
-    this.dayPadding = 2.0,
+    this.dayPadding = 2,
     this.height = double.infinity,
     this.width = double.infinity,
     this.todayTextStyle,
@@ -164,6 +171,7 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
     this.selectedDayBorderColor = Colors.green,
     this.selectedDayButtonColor = Colors.green,
     this.daysHaveCircularBorder,
+    this.daysBorderRadius,
     this.disableDayPressed = false,
     this.onDayPressed,
     this.weekdayTextStyle = const TextStyle(),
@@ -175,8 +183,8 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
     this.markedDateShowIcon = false,
     this.markedDateIconBorderColor,
     this.markedDateIconMaxShown = 2,
-    this.markedDateIconMargin = 5.0,
-    this.markedDateIconOffset = 5.0,
+    this.markedDateIconMargin = 5,
+    this.markedDateIconOffset = 5,
     this.markedDateIconBuilder,
     this.markedDateMoreShowTotal,
     this.markedDateMoreCustomDecoration,
@@ -185,10 +193,10 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
     this.markedDateMoreCustomTextStyle,
     this.markedDateWidget,
     this.multipleMarkedDates,
-    this.headerMargin = const EdgeInsets.symmetric(vertical: 16.0),
-    this.childAspectRatio = 1.0,
-    this.weekDayMargin = const EdgeInsets.only(bottom: 4.0),
-    this.weekDayPadding = const EdgeInsets.all(0.0),
+    this.headerMargin = const EdgeInsets.symmetric(vertical: 16),
+    this.childAspectRatio = 1,
+    this.weekDayMargin = const EdgeInsets.only(bottom: 4),
+    this.weekDayPadding = EdgeInsets.zero,
     this.weekDayBackgroundColor = Colors.transparent,
     this.customWeekDayBuilder,
     this.customDayBuilder,
@@ -200,7 +208,7 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
     this.rightButtonIcon,
     this.customGridViewPhysics,
     this.onCalendarChanged,
-    this.locale = "en",
+    this.locale = 'en',
     this.firstDayOfWeek,
     this.minSelectedDate,
     this.maxSelectedDate,
@@ -222,10 +230,13 @@ class CalendarCarousel<T extends EventInterface> extends StatefulWidget {
     this.showIconBehindDayText = false,
     this.pageScrollPhysics = const ScrollPhysics(),
     this.shouldShowTransform = true,
+    this.maxDot = 5,
+    this.goingToToday = false,
+    this.animationDuration = const Duration(seconds: 1),
   }) : super(key: key);
 
   @override
-  _CalendarState<T> createState() => _CalendarState<T>();
+  State<CalendarCarousel<T>> createState() => _CalendarState<T>();
 }
 
 enum WeekdayFormat {
@@ -257,7 +268,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
   /// If the setState called from this class, don't reload the selectedDate, but it should reload selected date if called from external class
 
   @override
-  initState() {
+  void initState() {
     super.initState();
     initializeDateFormatting();
 
@@ -272,7 +283,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
 
     /// setup pageController
     _controller = PageController(
-      initialPage: this._pageNum,
+      initialPage: _pageNum,
       keepPage: true,
       viewportFraction: widget.viewportFraction,
 
@@ -289,19 +300,19 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
   void didUpdateWidget(CalendarCarousel<T> oldWidget) {
     if (widget.targetDateTime != null && widget.targetDateTime != _targetDate) {
       _init();
-      _setDate(_pageNum);
+      _setDate(pageNum: _pageNum);
     }
 
     super.didUpdateWidget(oldWidget);
   }
 
   @override
-  dispose() {
+  void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
-  _init() {
+  void _init() {
     final targetDateTime = widget.targetDateTime;
     if (targetDateTime != null) {
       if (targetDateTime.difference(minDate).inDays < 0) {
@@ -324,7 +335,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
   @override
   Widget build(BuildContext context) {
     final headerText = widget.headerText;
-    return Container(
+    return SizedBox(
       width: widget.width,
       height: widget.height,
       child: Column(
@@ -332,11 +343,10 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
           CalendarHeader(
             showHeader: widget.showHeader,
             headerMargin: widget.headerMargin,
-            headerTitle: headerText != null
-                ? headerText
-                : widget.weekFormat
-                    ? '${_localeDate.format(this._weeks[this._pageNum].first)}'
-                    : '${_localeDate.format(this._dates[this._pageNum])}',
+            headerTitle: headerText ??
+                (widget.weekFormat
+                    ? _localeDate.format(_weeks[_pageNum].first)
+                    : _localeDate.format(_dates[_pageNum])),
             headerTextStyle: widget.headerTextStyle,
             showHeaderButtons: widget.showHeaderButton,
             headerIconColor: widget.iconColor,
@@ -345,15 +355,19 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
             onLeftButtonPressed: () {
               widget.onLeftArrowPressed?.call();
 
-              if (this._pageNum > 0) _setDate(this._pageNum - 1);
+              if (_pageNum > 0) _setDate(pageNum: _pageNum - 1);
             },
             onRightButtonPressed: () {
               widget.onRightArrowPressed?.call();
 
               if (widget.weekFormat) {
-                if (this._weeks.length - 1 > this._pageNum) _setDate(this._pageNum + 1);
+                if (_weeks.length - 1 > _pageNum) {
+                  _setDate(pageNum: _pageNum + 1);
+                }
               } else {
-                if (this._dates.length - 1 > this._pageNum) _setDate(this._pageNum + 1);
+                if (_dates.length - 1 > _pageNum) {
+                  _setDate(pageNum: _pageNum + 1);
+                }
               }
             },
             onHeaderTitlePressed: widget.headerTitleTouchable
@@ -380,12 +394,12 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
           ),
           Expanded(
               child: PageView.builder(
-            itemCount: widget.weekFormat ? this._weeks.length : this._dates.length,
+            itemCount: widget.weekFormat ? _weeks.length : _dates.length,
             physics:
                 widget.isScrollable ? widget.pageScrollPhysics : NeverScrollableScrollPhysics(),
             scrollDirection: widget.scrollDirection,
             onPageChanged: (index) {
-              this._setDate(index);
+              _setDate(pageNum: index, shouldJumpToPage: false);
             },
             controller: _controller,
             itemBuilder: (context, index) {
@@ -410,9 +424,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
     bool isThisMonthDay,
     DateTime now,
   ) {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
+    return SizedBox.expand(
       child: Row(
         crossAxisAlignment: widget.dayCrossAxisAlignment,
         mainAxisAlignment: widget.dayMainAxisAlignment,
@@ -458,7 +470,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
           style: TextButton.styleFrom(
             shape: widget.markedDateCustomShapeBorder != null &&
                     markedDatesMap != null &&
-                    markedDatesMap.getEvents(now).length > 0
+                    markedDatesMap.getEvents(now).isNotEmpty
                 ? widget.markedDateCustomShapeBorder
                 : widget.daysHaveCircularBorder == null
                     ? CircleBorder()
@@ -477,6 +489,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
                             ),
                           )
                         : RoundedRectangleBorder(
+                            borderRadius: widget.daysBorderRadius ?? BorderRadius.zero,
                             side: BorderSide(
                               color: isSelectedDay
                                   ? widget.selectedDayBorderColor
@@ -500,18 +513,24 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
                         : widget.dayButtonColor,
             padding: EdgeInsets.all(widget.dayPadding),
           ),
-          onPressed: widget.disableDayPressed ? null : () => _onDayPressed(now),
+          onPressed: widget.disableDayPressed || !isSelectable ? null : () => _onDayPressed(now),
           child: Stack(
             children: widget.showIconBehindDayText
                 ? <Widget>[
-                    widget.markedDatesMap != null ? _renderMarkedMapContainer(now) : Container(),
+                    if (widget.markedDatesMap != null)
+                      _renderMarkedMapContainer(now)
+                    else
+                      Container(),
                     getDayContainer(isSelectable, index, isSelectedDay, isToday, isPrevMonthDay,
                         textStyle, defaultTextStyle, isNextMonthDay, isThisMonthDay, now),
                   ]
                 : <Widget>[
                     getDayContainer(isSelectable, index, isSelectedDay, isToday, isPrevMonthDay,
                         textStyle, defaultTextStyle, isNextMonthDay, isThisMonthDay, now),
-                    widget.markedDatesMap != null ? _renderMarkedMapContainer(now) : Container(),
+                    if (widget.markedDatesMap != null)
+                      _renderMarkedMapContainer(now)
+                    else
+                      Container(),
                   ],
           ),
         ),
@@ -545,10 +564,10 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
         if (!widget.shouldShowTransform) {
           return child!;
         }
-        double value = 1.0;
+        double value = 1;
         if (_controller.position.haveDimensions) {
           value = _controller.page! - slideIndex;
-          value = (1 - (value.abs() * .5)).clamp(0.0, 1.0);
+          value = (1 - (value.abs() * .5)).clamp(0, 1);
         }
 
         return Center(
@@ -562,9 +581,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
       child: Stack(
         children: <Widget>[
           Positioned(
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
+            child: SizedBox.expand(
               child: GridView.count(
                 physics: widget.customGridViewPhysics,
                 crossAxisCount: 7,
@@ -615,14 +632,16 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
                   final markedDatesMap = widget.markedDatesMap;
                   if (widget.markedDateCustomTextStyle != null &&
                       markedDatesMap != null &&
-                      markedDatesMap.getEvents(now).length > 0) {
+                      markedDatesMap.getEvents(now).isNotEmpty) {
                     textStyle = widget.markedDateCustomTextStyle;
                   }
                   bool isSelectable = true;
-                  if (now.millisecondsSinceEpoch < minDate.millisecondsSinceEpoch)
+                  if (now.millisecondsSinceEpoch < minDate.millisecondsSinceEpoch) {
                     isSelectable = false;
-                  else if (now.millisecondsSinceEpoch > maxDate.millisecondsSinceEpoch)
+                  } else if (now.millisecondsSinceEpoch > maxDate.millisecondsSinceEpoch) {
                     isSelectable = false;
+                  }
+
                   return renderDay(isSelectable, index, isSelectedDay, isToday, isPrevMonthDay,
                       textStyle, defaultTextStyle, isNextMonthDay, isThisMonthDay, now);
                 }),
@@ -643,10 +662,10 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
     return AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
-          double value = 1.0;
+          double value = 1;
           if (_controller.position.haveDimensions) {
             value = _controller.page! - slideIndex;
-            value = (1 - (value.abs() * .5)).clamp(0.0, 1.0);
+            value = (1 - (value.abs() * .5)).clamp(0, 1);
           }
 
           return Center(
@@ -660,9 +679,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
         child: Stack(
           children: <Widget>[
             Positioned(
-              child: Container(
-                width: double.infinity,
-                height: double.infinity,
+              child: SizedBox.expand(
                 child: GridView.count(
                   physics: widget.customGridViewPhysics,
                   crossAxisCount: 7,
@@ -673,11 +690,11 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
                     bool isToday = weekDays[index].day == DateTime.now().day &&
                         weekDays[index].month == DateTime.now().month &&
                         weekDays[index].year == DateTime.now().year;
-                    bool isSelectedDay = this._selectedDate.year == weekDays[index].year &&
-                        this._selectedDate.month == weekDays[index].month &&
-                        this._selectedDate.day == weekDays[index].day;
-                    bool isPrevMonthDay = weekDays[index].month < this._targetDate.month;
-                    bool isNextMonthDay = weekDays[index].month > this._targetDate.month;
+                    bool isSelectedDay = _selectedDate.year == weekDays[index].year &&
+                        _selectedDate.month == weekDays[index].month &&
+                        _selectedDate.day == weekDays[index].day;
+                    bool isPrevMonthDay = weekDays[index].month < _targetDate.month;
+                    bool isNextMonthDay = weekDays[index].month > _targetDate.month;
                     bool isThisMonthDay = !isPrevMonthDay && !isNextMonthDay;
 
                     DateTime now =
@@ -705,10 +722,11 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
                       return Container();
                     }
                     bool isSelectable = true;
-                    if (now.millisecondsSinceEpoch < minDate.millisecondsSinceEpoch)
+                    if (now.millisecondsSinceEpoch < minDate.millisecondsSinceEpoch) {
                       isSelectable = false;
-                    else if (now.millisecondsSinceEpoch > maxDate.millisecondsSinceEpoch)
+                    } else if (now.millisecondsSinceEpoch > maxDate.millisecondsSinceEpoch) {
                       isSelectable = false;
+                    }
                     return renderDay(isSelectable, index, isSelectedDay, isToday, isPrevMonthDay,
                         textStyle, defaultTextStyle, isNextMonthDay, isThisMonthDay, now);
                   }),
@@ -720,7 +738,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
   }
 
   List<DateTime> _getDaysInWeek([DateTime? selectedDate]) {
-    if (selectedDate == null) selectedDate = new DateTime.now();
+    selectedDate ??= DateTime.now();
 
     var firstDayOfCurrentWeek = _firstDayOfWeek(selectedDate);
     var lastDayOfCurrentWeek = _lastDayOfWeek(selectedDate);
@@ -730,17 +748,17 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
 
   DateTime _firstDayOfWeek(DateTime date) {
     var day = _createUTCMiddayDateTime(date);
-    return day.subtract(new Duration(days: date.weekday % 7));
+    return day.subtract(Duration(days: date.weekday % 7));
   }
 
   DateTime _lastDayOfWeek(DateTime date) {
     var day = _createUTCMiddayDateTime(date);
-    return day.add(new Duration(days: 7 - day.weekday % 7));
+    return day.add(Duration(days: 7 - day.weekday % 7));
   }
 
   DateTime _createUTCMiddayDateTime(DateTime date) {
     // Magic const: 12 is to maintain compatibility with date_utils
-    return new DateTime.utc(date.year, date.month, date.day, 12, 0, 0);
+    return DateTime.utc(date.year, date.month, date.day, 12, 0, 0);
   }
 
   Iterable<DateTime> _daysInRange(DateTime start, DateTime end) {
@@ -752,7 +770,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
       var timeZoneDiff = d.timeZoneOffset - offset;
       if (timeZoneDiff.inSeconds != 0) {
         offset = d.timeZoneOffset;
-        d = d.subtract(new Duration(seconds: timeZoneDiff.inSeconds));
+        d = d.subtract(Duration(seconds: timeZoneDiff.inSeconds));
       }
       return d;
     });
@@ -772,7 +790,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
     widget.onDayPressed?.call(picked, widget.markedDatesMap?.getEvents(picked) ?? const []);
   }
 
-  Future<Null> _selectDateFromPicker() async {
+  Future<void> _selectDateFromPicker() async {
     DateTime? selected = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -793,26 +811,24 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
     /// Setup default calendar format
     List<DateTime> date = [];
     int currentDateIndex = 0;
-    for (int _cnt = 0;
+    for (int cnt = 0;
         0 >=
-            DateTime(minDate.year, minDate.month + _cnt)
+            DateTime(minDate.year, minDate.month + cnt)
                 .difference(DateTime(maxDate.year, maxDate.month))
                 .inDays;
-        _cnt++) {
-      date.add(DateTime(minDate.year, minDate.month + _cnt, 1));
-      if (0 ==
-          date.last.difference(DateTime(this._targetDate.year, this._targetDate.month)).inDays) {
-        currentDateIndex = _cnt;
+        cnt++) {
+      date.add(DateTime(minDate.year, minDate.month + cnt, 1));
+      if (0 == date.last.difference(DateTime(_targetDate.year, _targetDate.month)).inDays) {
+        currentDateIndex = cnt;
       }
     }
 
     /// Setup week-only format
     List<List<DateTime>> week = [];
-    for (int _cnt = 0;
-        0 >=
-            minDate.add(Duration(days: 7 * _cnt)).difference(maxDate.add(Duration(days: 7))).inDays;
-        _cnt++) {
-      week.add(_getDaysInWeek(minDate.add(new Duration(days: 7 * _cnt))));
+    for (int cnt = 0;
+        0 >= minDate.add(Duration(days: 7 * cnt)).difference(maxDate.add(Duration(days: 7))).inDays;
+        cnt++) {
+      week.add(_getDaysInWeek(minDate.add(Duration(days: 7 * cnt))));
     }
 
     _startWeekday = date[currentDateIndex].weekday - firstDayOfWeek;
@@ -825,44 +841,59 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
     _endWeekday =
         DateTime(date[currentDateIndex].year, date[currentDateIndex].month + 1, 1).weekday -
             firstDayOfWeek;
-    this._dates = date;
-    this._weeks = week;
+    _dates = date;
+    _weeks = week;
 //        this._selectedDate = widget.selectedDateTime != null
 //            ? widget.selectedDateTime
 //            : DateTime.now();
   }
 
-  void _setDate([int page = -1]) {
-    if (page == -1) {
+  void _setDate({final bool shouldJumpToPage = true, final int pageNum = -1}) {
+    if (pageNum == -1) {
       setState(() {
         _setDatesAndWeeks();
       });
     } else {
+      final now = DateTime.now();
+      bool ignore = widget.goingToToday;
+      if (widget.weekFormat) {
+        int dayDiff = now.difference(_weeks[pageNum].first).inDays;
+        ignore = ignore && (dayDiff > 7 || dayDiff < -7);
+      } else {
+        ignore = ignore && (now.year != _dates[pageNum].year || now.month != _dates[pageNum].month);
+      }
+      if (ignore) {
+        return;
+      }
       if (widget.weekFormat) {
         setState(() {
-          this._pageNum = page;
-          this._targetDate = this._weeks[page].first;
+          _pageNum = pageNum;
+          _targetDate = _weeks[pageNum].first;
         });
 
-        _controller.animateToPage(page,
-            duration: Duration(milliseconds: 1000), curve: Curves.easeOut);
+        if (shouldJumpToPage) {
+          _controller.animateToPage(pageNum,
+              duration: widget.animationDuration, curve: Curves.easeOut);
+        }
       } else {
         setState(() {
-          this._pageNum = page;
-          this._targetDate = this._dates[page];
-          _startWeekday = _dates[page].weekday - firstDayOfWeek;
-          _endWeekday = _lastDayOfWeek(_dates[page]).weekday - firstDayOfWeek;
+          _pageNum = pageNum;
+          _targetDate = _dates[pageNum];
+          _startWeekday = _dates[pageNum].weekday - firstDayOfWeek;
+          _endWeekday = _lastDayOfWeek(_dates[pageNum]).weekday - firstDayOfWeek;
         });
-        _controller.animateToPage(page,
-            duration: Duration(milliseconds: 1000), curve: Curves.easeOut);
+
+        if (shouldJumpToPage) {
+          _controller.animateToPage(pageNum,
+              duration: widget.animationDuration, curve: Curves.easeOut);
+        }
       }
 
       //call callback
-      final onCalendarChanged = widget.onCalendarChanged;
+      final OnCalendarChanged? onCalendarChanged = widget.onCalendarChanged;
       if (onCalendarChanged != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          onCalendarChanged(
-              !widget.weekFormat ? this._dates[page] : this._weeks[page][firstDayOfWeek]);
+          onCalendarChanged(!widget.weekFormat ? _dates[pageNum] : _weeks[pageNum][firstDayOfWeek]);
         });
       }
     }
@@ -876,7 +907,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
     } else {
       return Container(
         height: double.infinity,
-        padding: EdgeInsets.only(bottom: 4.0),
+        padding: EdgeInsets.only(bottom: 4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.max,
@@ -899,20 +930,20 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
     final markedDateIconOffset = widget.markedDateIconOffset;
     final markedDateMoreCustomDecoration = widget.markedDateMoreCustomDecoration;
 
-    if (markedEvents.length > 0) {
+    if (markedEvents.isNotEmpty) {
       List<Widget> tmp = [];
       int count = 0;
       int eventIndex = 0;
-      double offset = 0.0;
+      double offset = 0;
       double padding = markedDateIconMargin;
-      markedEvents.forEach((T event) {
+      for (T event in markedEvents) {
         if (markedDateShowIcon) {
-          if (tmp.length > 0 && tmp.length < markedDateIconMaxShown) {
+          if (tmp.isNotEmpty && tmp.length < markedDateIconMaxShown) {
             offset += markedDateIconOffset;
           }
           if (tmp.length < markedDateIconMaxShown && markedDateIconBuilder != null) {
             tmp.add(Center(
-                child: new Container(
+                child: Container(
               padding: EdgeInsets.only(
                 top: padding + offset,
                 left: padding + offset,
@@ -929,30 +960,28 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
           if (count > 0 && markedDateMoreShowTotal != null) {
             tmp.add(
               Positioned(
-                bottom: 0.0,
-                right: 0.0,
+                bottom: 0,
+                right: 0,
                 child: Container(
-                  padding: EdgeInsets.all(4.0),
+                  padding: EdgeInsets.all(4),
                   width: markedDateMoreShowTotal ? 18 : null,
                   height: markedDateMoreShowTotal ? 18 : null,
-                  decoration: markedDateMoreCustomDecoration == null
-                      ? new BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.all(Radius.circular(1000.0)),
-                        )
-                      : markedDateMoreCustomDecoration,
+                  decoration: markedDateMoreCustomDecoration ??
+                      BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.all(Radius.circular(1000)),
+                      ),
                   child: Center(
                     child: Text(
                       markedDateMoreShowTotal
                           ? (count + markedDateIconMaxShown).toString()
-                          : (count.toString() + '+'),
+                          : ('$count+'),
                       semanticsLabel: markedDateMoreShowTotal
                           ? (count + markedDateIconMaxShown).toString()
-                          : (count.toString() + '+'),
-                      style: markedDateMoreCustomTextStyle == null
-                          ? TextStyle(
-                              fontSize: 9.0, color: Colors.white, fontWeight: FontWeight.normal)
-                          : markedDateMoreCustomTextStyle,
+                          : ('$count+'),
+                      style: markedDateMoreCustomTextStyle ??
+                          TextStyle(
+                              fontSize: 9, color: Colors.white, fontWeight: FontWeight.normal),
                     ),
                   ),
                 ),
@@ -961,7 +990,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
           }
         } else {
           //max 5 dots
-          if (eventIndex < 5) {
+          if (eventIndex < widget.maxDot) {
             Widget? widget;
 
             if (markedDateIconBuilder != null) {
@@ -984,7 +1013,7 @@ class _CalendarState<T extends EventInterface> extends State<CalendarCarousel<T>
         }
 
         eventIndex++;
-      });
+      }
       return tmp;
     }
     return [];
